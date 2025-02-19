@@ -2,8 +2,6 @@ __pycache__/
 *.py[cod]
 *.pyo
 
-env/
-.env/
 .env
 
 venv/
@@ -12,7 +10,7 @@ venv/
 Thumbs.db
 
 .ipynb_checkpoints/
-
+.conda/
 *.csv
 *.log
-data/
+
