@@ -125,23 +125,18 @@ def save_csv(records: list, filename: str):
     print(f"Data saved to {filename} in CSV format.")
 
 def main():
-    # Load the API key from .env
     api_key = load_api_key()
     
-    # Define the overall date range from January 1, 2004 to December 31, 2025.
     overall_start = datetime(2004, 1, 1)
     overall_end = datetime(2025, 1, 1)
     print(f"Fetching data from {overall_start.strftime('%Y-%m-%d')} to {overall_end.strftime('%Y-%m-%d')}...")
 
-    # Fetch data over the specified range.
     records = fetch_data_over_range(overall_start, overall_end, api_key)
     print(f"Total records fetched: {len(records)}")
     
-    # Ensure the data directory exists
     data_dir = os.path.join(os.getcwd(), "data")
     os.makedirs(data_dir, exist_ok=True)
     
-    # Save the fetched data to a CSV file in the data directory.
     csv_filename = os.path.join(data_dir, f"neo_feed_{overall_start.strftime('%Y-%m-%d')}_to_{overall_end.strftime('%Y-%m-%d')}.csv")
     save_csv(records, csv_filename)
 
