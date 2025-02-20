@@ -4,7 +4,7 @@ from models import NEODataPreprocessor, load_training_data
 import torch
 import matplotlib.pyplot as plt
 from datetime import datetime
-from config.model_config import TEMPORAL_MODEL_CONFIG, TRAINING_START_DATE, PREDICTION_HORIZON
+from models.config.model_config import TEMPORAL_MODEL_CONFIG, TRAINING_START_DATE, PREDICTION_HORIZON
 
 def plot_training_history(history: dict, save_path: str):
     """Plot and save training history"""

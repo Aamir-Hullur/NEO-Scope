@@ -1,0 +1,1 @@
+{"sequence_length": 5, "hidden_units": 64, "dropout_rate": 0.2, "learning_rate": 0.001, "batch_size": 32, "epochs": 50, "validation_split": 0.2, "features": ["velocity_change", "miss_distance_change", "days_since_first_obs"], "target_features": ["velocity_change", "miss_distance_change"], "device": "cuda", "num_workers": 4, "pin_memory": true}

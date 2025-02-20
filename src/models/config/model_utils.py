@@ -15,7 +15,15 @@ def get_supabase_client() -> Client:
     return create_client(url, key)
 
 def load_training_data(start_date: str, end_date: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Load training data from Supabase"""
+    """Load training data from Supabase
+    
+    Args:
+        start_date (str): Start date for training data
+        end_date (str): End date for training data
+        
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame]: (main_data, temporal_features)
+    """
     supabase = get_supabase_client()
     
     # Load main data
@@ -32,30 +40,65 @@ def load_training_data(start_date: str, end_date: str) -> Tuple[pd.DataFrame, pd
         .execute()
     temporal_features = pd.DataFrame(response.data)
     
+    # Print data info for debugging
+    print(f"\nLoaded {len(main_data)} main records")
+    print(f"Loaded {len(temporal_features)} temporal records")
+    
+    if temporal_features.empty or main_data.empty:
+        raise ValueError(f"No data found between {start_date} and {end_date}")
+    
+    # Extract original asteroid ID from record_id in temporal features
+    if 'record_id' in temporal_features.columns:
+        temporal_features['id'] = temporal_features['record_id'].str.split('_').str[0]
+        print(f"\nNumber of unique asteroids in temporal features: {temporal_features['id'].nunique()}")
+    
     return main_data, temporal_features
 
 class NEODataPreprocessor:
     def __init__(self):
         self.scaler = StandardScaler()
-        
+
     def prepare_sequences(self, 
                          df: pd.DataFrame, 
                          config: Dict,
                          train: bool = True) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Prepare sequence data for training or prediction
+
+        Args:
+            df (pd.DataFrame): Input DataFrame with temporal features
+            config (Dict): Model configuration
+            train (bool): Whether this is for training
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: (sequences, targets)
         """
+        # Print DataFrame info for debugging
+        print("\nDataFrame Info:")
+        print(df.info())
+
+        # Extract close_approach_date from record_id
+        df['close_approach_date'] = df['record_id'].str.split('_').str[1]
+
+        # Ensure close_approach_date is datetime
+        df['close_approach_date'] = pd.to_datetime(df['close_approach_date'])
+
         # Sort by NEO ID and date
         df = df.sort_values(['id', 'close_approach_date'])
-        
+
+        print(f"\nTotal unique asteroids: {df['id'].nunique()}")
+        print(f"Date range: {df['close_approach_date'].min()} to {df['close_approach_date'].max()}")
+
         sequences = []
         targets = []
-        
+
         # Create sequences for each NEO
+        asteroids_processed = 0
         for neo_id in df['id'].unique():
             neo_data = df[df['id'] == neo_id][config['features']].values
-            
+
             if len(neo_data) >= config['sequence_length'] + 1:
+                asteroids_processed += 1
                 for i in range(len(neo_data) - config['sequence_length']):
                     seq = neo_data[i:i+config['sequence_length']]
                     target = neo_data[i+config['sequence_length']][
@@ -63,26 +106,36 @@ class NEODataPreprocessor:
                     ]
                     sequences.append(seq)
                     targets.append(target)
-        
+
+            if asteroids_processed % 100 == 0 and asteroids_processed > 0:
+                print(f"Processed {asteroids_processed} asteroids...")
+
+        if not sequences:
+            raise ValueError(
+                f"No valid sequences could be created. Need at least {config['sequence_length'] + 1} "
+                f"observations per asteroid. Check your data or reduce sequence_length in config."
+            )
+
+        print(f"\nCreated {len(sequences)} sequences from {asteroids_processed} asteroids")
+        print(f"Average sequences per asteroid: {len(sequences)/asteroids_processed:.2f}")
+
         sequences = np.array(sequences)
         targets = np.array(targets)
-        
+
+        print(f"Sequence shape: {sequences.shape}")
+        print(f"Target shape: {targets.shape}")
+
         # Scale features
         if train:
-            # Reshape for scaling
             seq_shape = sequences.shape
             sequences = self.scaler.fit_transform(
                 sequences.reshape(-1, sequences.shape[-1])
             ).reshape(seq_shape)
         else:
-            # Use pre-fitted scaler for prediction data
             seq_shape = sequences.shape
             sequences = self.scaler.transform(
                 sequences.reshape(-1, sequences.shape[-1])
             ).reshape(seq_shape)
-        
-        # Convert to PyTorch tensors
-        sequences = torch.FloatTensor(sequences)
-        targets = torch.FloatTensor(targets)
-        
-        return sequences, targets
+
+        return torch.FloatTensor(sequences), torch.FloatTensor(targets)
+            

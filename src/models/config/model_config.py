@@ -1,3 +1,4 @@
+import torch
 TEMPORAL_MODEL_CONFIG = {
     'sequence_length': 5,
     'hidden_units': 64,
