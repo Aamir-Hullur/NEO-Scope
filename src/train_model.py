@@ -63,7 +63,7 @@ def main():
     
     # Create save directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    save_dir = os.path.join("models", "saved", f"temporal_model_{timestamp}")
+    save_dir = os.path.join("Model_Outputs", "saved", f"temporal_model_{timestamp}")
     os.makedirs(save_dir, exist_ok=True)
     
     # Save the model and preprocessor

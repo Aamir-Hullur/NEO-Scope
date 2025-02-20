@@ -1,4 +1,5 @@
 import torch
+
 TEMPORAL_MODEL_CONFIG = {
     'sequence_length': 5,
     'hidden_units': 64,
@@ -7,6 +8,7 @@ TEMPORAL_MODEL_CONFIG = {
     'batch_size': 32,
     'epochs': 50,
     'validation_split': 0.2,
+    'attention_heads': 4,  # New parameter for attention mechanism
     'features': [
         'velocity_change',
         'miss_distance_change',
@@ -18,8 +20,8 @@ TEMPORAL_MODEL_CONFIG = {
     ],
     # PyTorch specific parameters
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'num_workers': 4,  # for data loading
-    'pin_memory': True  # for faster data transfer to GPU
+    'num_workers': 4,
+    'pin_memory': True
 }
 
 # Date range for prediction

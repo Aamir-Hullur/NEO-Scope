@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from sklearn.preprocessing import StandardScaler
 import os
 
+
 def get_supabase_client() -> Client:
     """Get Supabase client"""
     load_dotenv()
@@ -14,8 +15,40 @@ def get_supabase_client() -> Client:
     key = os.getenv("SUPABASE_KEY")
     return create_client(url, key)
 
+def handle_missing_values(df: pd.DataFrame, columns: list) -> pd.DataFrame:
+    """
+    Handle missing values in the DataFrame
+    
+    Args:
+        df (pd.DataFrame): Input DataFrame
+        columns (list): List of columns to check for missing values
+    
+    Returns:
+        pd.DataFrame: DataFrame with handled missing values
+    """
+    total_rows = len(df)
+    
+    # Print missing value statistics
+    print("\nMissing Value Analysis:")
+    for col in columns:
+        missing = df[col].isna().sum()
+        if missing > 0:
+            print(f"{col}: {missing} missing values ({(missing/total_rows)*100:.2f}%)")
+    
+    # Handle missing values based on column type
+    for col in columns:
+        if df[col].dtype in ['float64', 'int64']:
+            # For numeric columns, fill with median
+            df[col] = df[col].fillna(df[col].median())
+        else:
+            # For categorical/other columns, fill with mode
+            df[col] = df[col].fillna(df[col].mode()[0])
+    
+    return df
+
 def load_training_data(start_date: str, end_date: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Load training data from Supabase
+    """
+    Load training data from Supabase with enhanced data validation
     
     Args:
         start_date (str): Start date for training data
@@ -46,6 +79,27 @@ def load_training_data(start_date: str, end_date: str) -> Tuple[pd.DataFrame, pd
     
     if temporal_features.empty or main_data.empty:
         raise ValueError(f"No data found between {start_date} and {end_date}")
+    
+    # Handle missing values in main_data
+    main_data_columns = [
+        'absolute_magnitude_h', 
+        'estimated_diameter_min_km',
+        'estimated_diameter_max_km',
+        'relative_velocity_kph',
+        'miss_distance_km'
+    ]
+    main_data = handle_missing_values(main_data, main_data_columns)
+    
+    # Handle missing values in temporal_features
+    temporal_columns = [
+        'velocity_change',
+        'miss_distance_change',
+        'days_since_first_obs',
+        'year',
+        'month',
+        'day_of_year'
+    ]
+    temporal_features = handle_missing_values(temporal_features, temporal_columns)
     
     # Extract original asteroid ID from record_id in temporal features
     if 'record_id' in temporal_features.columns:

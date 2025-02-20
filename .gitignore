@@ -11,6 +11,7 @@ Thumbs.db
 
 .ipynb_checkpoints/
 .conda/
-*.csv
+# *.csv
 *.log
 
+Model_Outputs/
