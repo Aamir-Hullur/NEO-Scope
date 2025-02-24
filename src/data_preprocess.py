@@ -13,18 +13,12 @@ class NEOFeatureEngineer:
         self.physical_scaler = StandardScaler()
     
     def create_basic_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Create basic features (your existing feature engineering)
-        """
         df = df.copy()
         df['close_approach_date'] = pd.to_datetime(df['close_approach_date'], errors='coerce')
         df['estimated_diameter_avg_km'] = (df['estimated_diameter_min_km'] + df['estimated_diameter_max_km']) / 2.0
         return df
 
     def create_temporal_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Create temporal features for the time series model
-        """
         df = df.copy()
         df = df.sort_values(['id', 'close_approach_date'])
         

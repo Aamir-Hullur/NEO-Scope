@@ -32,6 +32,22 @@ def plot_training_history(history: dict, save_path: str):
     plt.savefig(save_path)
     plt.close()
 
+def save_preprocessor(preprocessor: NEODataPreprocessor, save_dir: str):
+    """Save preprocessor scalers"""
+    scalers = {
+        'feature_scaler': preprocessor.feature_scaler,
+        'target_scaler': preprocessor.target_scaler
+    }
+    torch.save(scalers, os.path.join(save_dir, 'scalers.pth'))
+
+def load_preprocessor(load_dir: str) -> NEODataPreprocessor:
+    """Load preprocessor scalers"""
+    preprocessor = NEODataPreprocessor()
+    scalers = torch.load(os.path.join(load_dir, 'scalers.pth'))
+    preprocessor.feature_scaler = scalers['feature_scaler']
+    preprocessor.target_scaler = scalers['target_scaler']
+    return preprocessor
+
 def main():
     # Set random seeds for reproducibility
     torch.manual_seed(42)
@@ -66,9 +82,9 @@ def main():
     save_dir = os.path.join("Model_Outputs", "saved", f"temporal_model_{timestamp}")
     os.makedirs(save_dir, exist_ok=True)
     
-    # Save the model and preprocessor
+    # Save the model, preprocessor, and training history
     model.save(save_dir)
-    torch.save(preprocessor.scaler, os.path.join(save_dir, 'scaler.pth'))
+    save_preprocessor(preprocessor, save_dir)
     
     # Plot and save training history
     plot_training_history(
@@ -76,7 +92,7 @@ def main():
         os.path.join(save_dir, 'training_history.png')
     )
     
-    print(f"Model saved to {save_dir}")
+    print(f"Model saved successfully to {save_dir}")
 
 if __name__ == "__main__":
     main()

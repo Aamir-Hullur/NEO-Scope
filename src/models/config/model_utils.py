@@ -110,43 +110,55 @@ def load_training_data(start_date: str, end_date: str) -> Tuple[pd.DataFrame, pd
 
 class NEODataPreprocessor:
     def __init__(self):
-        self.scaler = StandardScaler()
+        self.feature_scaler = StandardScaler()
+        self.target_scaler = StandardScaler()
+        self._is_fitted = False
+
+    def save(self, path: str):
+        """Save preprocessor state"""
+        if not self._is_fitted:
+            raise ValueError("Preprocessor must be fitted before saving")
+        
+        scalers = {
+            'feature_scaler': self.feature_scaler,
+            'target_scaler': self.target_scaler
+        }
+        torch.save(scalers, path)
+
+    def load(self, path: str):
+        """Load preprocessor state"""
+        scalers = torch.load(path)
+        self.feature_scaler = scalers['feature_scaler']
+        self.target_scaler = scalers['target_scaler']
+        self._is_fitted = True
 
     def prepare_sequences(self, 
                          df: pd.DataFrame, 
                          config: Dict,
                          train: bool = True) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Prepare sequence data for training or prediction
-
-        Args:
-            df (pd.DataFrame): Input DataFrame with temporal features
-            config (Dict): Model configuration
-            train (bool): Whether this is for training
-
-        Returns:
-            Tuple[torch.Tensor, torch.Tensor]: (sequences, targets)
+        Prepare sequence data for training or prediction with improved scaling
         """
-        # Print DataFrame info for debugging
         print("\nDataFrame Info:")
         print(df.info())
 
         # Extract close_approach_date from record_id
         df['close_approach_date'] = df['record_id'].str.split('_').str[1]
-
-        # Ensure close_approach_date is datetime
         df['close_approach_date'] = pd.to_datetime(df['close_approach_date'])
-
-        # Sort by NEO ID and date
         df = df.sort_values(['id', 'close_approach_date'])
 
         print(f"\nTotal unique asteroids: {df['id'].nunique()}")
         print(f"Date range: {df['close_approach_date'].min()} to {df['close_approach_date'].max()}")
 
+        # Log transform numerical columns before scaling
+        numerical_columns = ['velocity_change', 'miss_distance_change']
+        for col in numerical_columns:
+            # Add small constant to handle zeros and negative values
+            df[col] = np.sign(df[col]) * np.log1p(np.abs(df[col]) + 1)
+
         sequences = []
         targets = []
 
-        # Create sequences for each NEO
         asteroids_processed = 0
         for neo_id in df['id'].unique():
             neo_data = df[df['id'] == neo_id][config['features']].values
@@ -167,29 +179,33 @@ class NEODataPreprocessor:
         if not sequences:
             raise ValueError(
                 f"No valid sequences could be created. Need at least {config['sequence_length'] + 1} "
-                f"observations per asteroid. Check your data or reduce sequence_length in config."
+                f"observations per asteroid."
             )
-
-        print(f"\nCreated {len(sequences)} sequences from {asteroids_processed} asteroids")
-        print(f"Average sequences per asteroid: {len(sequences)/asteroids_processed:.2f}")
 
         sequences = np.array(sequences)
         targets = np.array(targets)
 
+        print(f"\nCreated {len(sequences)} sequences from {asteroids_processed} asteroids")
+        print(f"Average sequences per asteroid: {len(sequences)/asteroids_processed:.2f}")
         print(f"Sequence shape: {sequences.shape}")
         print(f"Target shape: {targets.shape}")
 
-        # Scale features
+        # Scale features and targets separately
         if train:
             seq_shape = sequences.shape
-            sequences = self.scaler.fit_transform(
+            sequences = self.feature_scaler.fit_transform(
                 sequences.reshape(-1, sequences.shape[-1])
             ).reshape(seq_shape)
+            
+            targets = self.target_scaler.fit_transform(targets)
+            self._is_fitted = True
         else:
+            if not self._is_fitted:
+                raise ValueError("Preprocessor must be fitted before transform")
             seq_shape = sequences.shape
-            sequences = self.scaler.transform(
+            sequences = self.feature_scaler.transform(
                 sequences.reshape(-1, sequences.shape[-1])
             ).reshape(seq_shape)
+            targets = self.target_scaler.transform(targets)
 
         return torch.FloatTensor(sequences), torch.FloatTensor(targets)
-            

@@ -2,13 +2,15 @@ import torch
 
 TEMPORAL_MODEL_CONFIG = {
     'sequence_length': 5,
-    'hidden_units': 64,
-    'dropout_rate': 0.2,
-    'learning_rate': 0.001,
-    'batch_size': 32,
-    'epochs': 50,
+    'hidden_units': 256,  # Increased from 128
+    'num_attention_heads': 8,  # Increased from 4
+    'dropout_rate': 0.4,  # Increased from 0.3
+    'learning_rate': 0.0003,  # Further decreased
+    'batch_size': 64,  # Increased from 32
+    'epochs': 150,  # Increased from 100
     'validation_split': 0.2,
-    'attention_heads': 4,  # New parameter for attention mechanism
+    'patience': 15,  # Increased from 10
+    'gradient_clip': 1.0,  # Added gradient clipping
     'features': [
         'velocity_change',
         'miss_distance_change',
@@ -17,11 +19,7 @@ TEMPORAL_MODEL_CONFIG = {
     'target_features': [
         'velocity_change',
         'miss_distance_change'
-    ],
-    # PyTorch specific parameters
-    'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'num_workers': 4,
-    'pin_memory': True
+    ]
 }
 
 # Date range for prediction
